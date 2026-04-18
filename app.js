@@ -1,27 +1,26 @@
 // app.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged, 
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
   sendPasswordResetEmail,
   updateEmail,
   updatePassword
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { 
-  getDatabase, 
-  ref, 
-  set, 
-  get, 
-  update, 
-  push, 
-  onValue, 
-  off, 
-  increment, 
-  serverTimestamp,
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  update,
+  push,
+  onValue,
   remove,
+  increment,
+  serverTimestamp,
   query,
   orderByChild,
   equalTo
@@ -38,6 +37,7 @@ const db = getDatabase(app);
 // ---------- STATE GLOBAL ----------
 let currentUser = null;
 let userData = null;
+let userRole = 'user'; // 'superadmin', 'admin', 'user'
 let isAdmin = false;
 let globalSettings = { rewardPerView: 1, referralThreshold: 5, exchangeRate: 10 };
 
@@ -72,6 +72,7 @@ function updateHeaderUI() {
     headerUserArea.innerHTML = `
       <div class="user-badge">
         <span><i class="fas fa-user-circle"></i> ${userData?.username || currentUser.email}</span>
+        ${userRole !== 'user' ? `<span class="badge ${userRole === 'superadmin' ? 'badge-warning' : ''}">${userRole}</span>` : ''}
         <span class="point-badge"><i class="fas fa-coins"></i> ${pointDisplay} Poin</span>
         <button class="btn btn-outline btn-sm" id="logoutBtn"><i class="fas fa-sign-out-alt"></i></button>
       </div>
@@ -96,7 +97,8 @@ onAuthStateChanged(auth, async (user) => {
     const snap = await get(userRef);
     if (snap.exists()) {
       userData = snap.val();
-      isAdmin = userData.role === 'admin';
+      userRole = userData.role || 'user';
+      isAdmin = (userRole === 'admin' || userRole === 'superadmin');
     } else {
       // Buat data user baru
       userData = {
@@ -110,6 +112,7 @@ onAuthStateChanged(auth, async (user) => {
         createdAt: serverTimestamp()
       };
       await set(userRef, userData);
+      userRole = 'user';
       isAdmin = false;
     }
     await loadSettings();
@@ -118,6 +121,7 @@ onAuthStateChanged(auth, async (user) => {
   } else {
     currentUser = null;
     userData = null;
+    userRole = 'user';
     isAdmin = false;
     updateHeaderUI();
     renderAuth();
@@ -135,6 +139,7 @@ function router() {
     if (hash === 'admin' || hash === '') renderAdminDashboard();
     else if (hash === 'admin/articles') renderAdminArticles();
     else if (hash === 'admin/users') renderAdminUsers();
+    else if (hash === 'admin/admins') renderAdminAdmins();
     else if (hash === 'admin/settings') renderAdminSettings();
     else renderAdminDashboard();
   } else {
@@ -324,7 +329,6 @@ async function addPoints(amount, msg) {
   if (!currentUser) return;
   const userRef = ref(db, `users/${currentUser.uid}`);
   await update(userRef, { points: increment(amount) });
-  // Catat riwayat
   const historyRef = ref(db, `users/${currentUser.uid}/history`);
   await push(historyRef, {
     type: 'earn',
@@ -410,7 +414,6 @@ function renderUserReferral() {
       showToast(`Klik teman: ${newClicks}/${globalSettings.referralThreshold}`);
     }
   });
-  // Load daftar teman (user yang menggunakan kode referral ini)
   const refQuery = query(ref(db, 'users'), orderByChild('referredBy'), equalTo(refCode));
   onValue(refQuery, (snap) => {
     const listDiv = document.getElementById('referredList');
@@ -492,12 +495,16 @@ function renderUserHistory() {
 
 // ---------- DASHBOARD ADMIN ----------
 function renderAdminSidebar(active) {
+  const isSuperAdmin = userRole === 'superadmin';
   return `
     <div class="sidebar-menu">
       <a href="#admin" class="${active === 'dashboard' ? 'active' : ''}"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
       <a href="#admin/articles" class="${active === 'articles' ? 'active' : ''}"><i class="fas fa-newspaper"></i> Kelola Artikel</a>
       <a href="#admin/users" class="${active === 'users' ? 'active' : ''}"><i class="fas fa-users-cog"></i> Kelola Pengguna</a>
-      <a href="#admin/settings" class="${active === 'settings' ? 'active' : ''}"><i class="fas fa-cog"></i> Pengaturan</a>
+      ${isSuperAdmin ? `
+        <a href="#admin/admins" class="${active === 'admins' ? 'active' : ''}"><i class="fas fa-user-shield"></i> Kelola Admin</a>
+        <a href="#admin/settings" class="${active === 'settings' ? 'active' : ''}"><i class="fas fa-cog"></i> Pengaturan</a>
+      ` : ''}
       <a href="#home"><i class="fas fa-eye"></i> Lihat Situs</a>
     </div>
   `;
@@ -516,7 +523,6 @@ function renderAdminDashboard() {
       </div>
     </div>
   `;
-  // Statistik
   get(ref(db, 'users')).then(snap => {
     let count = 0, points = 0;
     if (snap.exists()) {
@@ -663,7 +669,7 @@ function renderAdminUsers() {
         html += `<tr><td>${u.username || '-'}</td><td>${u.email}</td><td>${u.points || 0}</td><td>${u.role || 'user'}</td>
           <td>
             <button class="btn btn-sm btn-outline resetPointsBtn" data-uid="${uid}"><i class="fas fa-undo"></i> Reset Poin</button>
-            <button class="btn btn-sm btn-danger deleteUserBtn" data-uid="${uid}"><i class="fas fa-trash"></i></button>
+            ${userRole === 'superadmin' ? `<button class="btn btn-sm btn-danger deleteUserBtn" data-uid="${uid}"><i class="fas fa-trash"></i></button>` : ''}
           </td></tr>`;
       });
       html += '</table>';
@@ -680,6 +686,89 @@ function renderAdminUsers() {
       }));
     } else {
       listDiv.innerHTML = '<p>Tidak ada pengguna.</p>';
+    }
+  });
+}
+
+function renderAdminAdmins() {
+  if (userRole !== 'superadmin') {
+    showToast('Akses ditolak', true);
+    router();
+    return;
+  }
+  appContainer.innerHTML = `
+    <div class="dashboard-layout">
+      ${renderAdminSidebar('admins')}
+      <div class="main-panel">
+        <div class="card">
+          <h3><i class="fas fa-user-shield"></i> Kelola Admin</h3>
+          <div style="background:#f8fafc; padding:20px; border-radius:16px; margin-bottom:24px;">
+            <h4>Tambah Admin Baru</h4>
+            <div style="display:flex; gap:12px;">
+              <input type="email" id="newAdminEmail" placeholder="Email" style="flex:2;">
+              <input type="password" id="newAdminPass" placeholder="Password" style="flex:2;">
+              <select id="newAdminRole" style="flex:1;">
+                <option value="admin">Admin</option>
+                <option value="superadmin">Super Admin</option>
+              </select>
+              <button class="btn" id="createAdminBtn"><i class="fas fa-plus"></i> Buat</button>
+            </div>
+          </div>
+          <div id="adminList">Memuat...</div>
+        </div>
+      </div>
+    </div>
+  `;
+  const adminQuery = query(ref(db, 'users'), orderByChild('role'));
+  onValue(adminQuery, (snap) => {
+    const listDiv = document.getElementById('adminList');
+    if (snap.exists()) {
+      let html = '<table class="table"><tr><th>Email</th><th>Username</th><th>Role</th><th>Aksi</th></tr>';
+      snap.forEach(child => {
+        const u = child.val();
+        const uid = child.key;
+        if (u.role === 'admin' || u.role === 'superadmin') {
+          html += `<tr>
+            <td>${u.email}</td>
+            <td>${u.username || '-'}</td>
+            <td><span class="badge ${u.role === 'superadmin' ? 'badge-warning' : ''}">${u.role}</span></td>
+            <td>
+              ${userRole === 'superadmin' && u.role !== 'superadmin' ? 
+                `<button class="btn btn-sm btn-outline changeRoleBtn" data-uid="${uid}" data-role="superadmin">Jadikan Super Admin</button>` : ''}
+              ${userRole === 'superadmin' ? 
+                `<button class="btn btn-sm btn-danger deleteAdminBtn" data-uid="${uid}">Hapus</button>` : ''}
+            </td>
+          </tr>`;
+        }
+      });
+      html += '</table>';
+      listDiv.innerHTML = html;
+    } else {
+      listDiv.innerHTML = '<p>Tidak ada admin.</p>';
+    }
+  });
+  document.getElementById('createAdminBtn').addEventListener('click', async () => {
+    const email = document.getElementById('newAdminEmail').value.trim();
+    const password = document.getElementById('newAdminPass').value.trim();
+    const role = document.getElementById('newAdminRole').value;
+    if (!email || !password) { showToast('Email dan password wajib', true); return; }
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await set(ref(db, `users/${cred.user.uid}`), {
+        email,
+        username: email.split('@')[0],
+        points: 0,
+        role: role,
+        referralCode: generateReferralCode(),
+        referralClicks: 0,
+        referralRewardGiven: false,
+        createdAt: serverTimestamp()
+      });
+      showToast(`Admin ${role} berhasil dibuat`);
+      document.getElementById('newAdminEmail').value = '';
+      document.getElementById('newAdminPass').value = '';
+    } catch (err) {
+      showToast(err.message, true);
     }
   });
 }
