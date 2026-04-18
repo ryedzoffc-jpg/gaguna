@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>TabLink · Real-time Reward Platform</title>
+  <!-- Font & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #0f172a; line-height: 1.5; min-height: 100vh; display: flex; flex-direction: column; }
+    :root { --primary: #2563eb; --primary-light: #3b82f6; --gray-light: #f1f5f9; --gray-border: #e2e8f0; --card-bg: #ffffff; --shadow: 0 4px 12px rgba(0,0,0,0.04); --sidebar-width: 280px; }
+    a { text-decoration: none; color: inherit; } ul { list-style: none; }
+    .wrapper { max-width: 1400px; margin: 0 auto; padding: 0 20px; width: 100%; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 40px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.95rem; }
+    .btn-outline { background: transparent; border: 1px solid var(--gray-border); color: #0f172a; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-sm { padding: 6px 14px; font-size: 0.85rem; }
+    .btn-block { width: 100%; justify-content: center; }
+    .card { background: var(--card-bg); border-radius: 24px; padding: 24px; box-shadow: var(--shadow); border: 1px solid var(--gray-border); }
+    .main-header { background: var(--card-bg); border-bottom: 1px solid var(--gray-border); padding: 14px 0; position: sticky; top: 0; z-index: 20; backdrop-filter: blur(8px); background: rgba(255,255,255,0.85); }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; }
+    .logo h1 { font-size: 1.8rem; font-weight: 700; background: linear-gradient(135deg, #1e3a8a, #2563eb); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .user-badge { display: flex; align-items: center; gap: 16px; }
+    .point-badge { background: #e6edfb; padding: 6px 16px; border-radius: 40px; font-weight: 600; }
+    .dashboard-layout { display: flex; gap: 24px; margin: 24px 0; }
+    .sidebar-menu { width: var(--sidebar-width); background: var(--card-bg); border-radius: 24px; padding: 20px 0; box-shadow: var(--shadow); border: 1px solid var(--gray-border); height: fit-content; }
+    .sidebar-menu a { display: flex; align-items: center; gap: 12px; padding: 14px 24px; font-weight: 500; color: #475569; border-left: 4px solid transparent; transition: 0.15s; }
+    .sidebar-menu a.active { background: #eef2ff; color: var(--primary); border-left-color: var(--primary); }
+    .sidebar-menu a i { width: 24px; }
+    .main-panel { flex: 1; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+    .stat-card { background: white; border-radius: 20px; padding: 20px; border: 1px solid var(--gray-border); }
+    .article-card { background: white; border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--gray-border); margin-bottom: 20px; }
+    .article-thumb { width: 100%; height: 180px; object-fit: cover; }
+    .article-body { padding: 20px; }
+    .toast-notif { position: fixed; bottom: 30px; right: 30px; background: #1e293b; color: white; padding: 14px 24px; border-radius: 60px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 14px; z-index: 1000; transform: translateY(100px); opacity: 0; transition: 0.3s; pointer-events: none; }
+    .toast-notif.show { transform: translateY(0); opacity: 1; }
+    @media (max-width: 900px) { .dashboard-layout { flex-direction: column; } .sidebar-menu { width: 100%; } }
+    .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(0,0,0,0.1); border-radius: 50%; border-top-color: var(--primary); animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .form-group { margin-bottom: 18px; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 500; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px 16px; border: 1px solid var(--gray-border); border-radius: 16px; font-size: 1rem; background: #fafafa; }
+    .badge { background: #e2e8f0; padding: 4px 10px; border-radius: 40px; font-size: 0.8rem; }
+    .badge-success { background: #10b981; color: white; }
+    .badge-warning { background: #f59e0b; color: white; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--gray-border); }
+    .ad-placeholder { background: #f1f5f9; border: 1px dashed #94a3b8; border-radius: 16px; padding: 20px; text-align: center; color: #64748b; margin: 20px 0; }
+  </style>
+</head>
+<body>
+
+<!-- TOAST NOTIFIKASI -->
+<div id="pointToast" class="toast-notif">
+  <i class="fas fa-coins"></i>
+  <span id="toastMessage">+1 Poin!</span>
+</div>
+
+<header class="main-header">
+  <div class="wrapper header-inner">
+    <div class="logo">
+      <h1>TabLink<span style="font-size:0.9rem; color:#64748b;">.reward</span></h1>
+    </div>
+    <div id="headerUserArea"></div>
+  </div>
+</header>
+
+<main id="appContainer" class="wrapper" style="flex:1;">
+  <!-- Konten akan dirender oleh JavaScript -->
+  <div style="text-align:center; padding:60px;"><div class="loading-spinner"></div> Memuat...</div>
+</main>
+
+<footer style="margin-top:auto; background:white; border-top:1px solid var(--gray-border); padding:24px; text-align:center; color:#64748b;">
+  <div class="wrapper">© 2026 TabLink · Didukung Firebase</div>
+</footer>
+
+<!-- Load modul JavaScript sebagai modul -->
+<script type="module" src="app.js"></script>
+</body>
+</html>
